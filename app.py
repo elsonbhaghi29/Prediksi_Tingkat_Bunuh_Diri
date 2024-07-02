@@ -19,11 +19,11 @@ age_group = st.selectbox('Pilih Grup Usia:', ['All Ages', '15-24 years', '25-34 
 # Mengubah nama grup usia menjadi angka sesuai data yang Anda gunakan
 age_num_map = {
     'All Ages': 0,
-    '15-24 years': 1,
-    '25-34 years': 2,
-    '35-54 years': 3,
-    '55-74 years': 4,
-    '75+ years': 5
+    '15-24 year': 1,
+    '25-34 year': 2,
+    '35-54 year': 3,
+    '55-74 year': 4,
+    '75+ year': 5
 }
 age_num = age_num_map[age_group]
 
