@@ -1,68 +1,76 @@
-
 import streamlit as st
 import pandas as pd
-import joblib
-from sklearn.linear_model import LinearRegression
 import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error, r2_score
+import joblib
+from pyngrok import ngrok
 
-# Judul aplikasi
-st.title("Prediksi Tingkat Bunuh Diri di Amerika Serikat")
+# Function to load data
+@st.cache
+def load_data():
+    # Assuming you have a dataset named 'suicide_rates.csv'
+    data = pd.read_csv('suicide_rates.csv')
+    return data
 
-# Memuat model
+# Load data
+data = load_data()
+
+# Display the data
+st.write("Dataset:")
+st.write(data.head())
+
+# Data Visualization
+st.write("Data Visualization:")
+fig, ax = plt.subplots()
+sns.heatmap(data.corr(), ax=ax, annot=True)
+st.pyplot(fig)
+
+# Train/Test Split
+X = data.drop(columns=['suicides/100k pop'])
+y = data['suicides/100k pop']
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Train the Model
+model = LinearRegression()
+model.fit(X_train, y_train)
+
+# Save the Model
+joblib.dump(model, 'model.pkl')
+
+# Load the Model
 model = joblib.load('model.pkl')
 
-# Data untuk visualisasi dan tabel
-data = {
-    'YEAR': [1950, 1960, 1970],
-    'AGE_NUM': [0, 0, 0],
-    'ESTIMATE': [13.2, 12.5, 13.1]
-}
-df = pd.DataFrame(data)
+# Predictions
+y_pred = model.predict(X_test)
 
-# Sidebar untuk navigasi
-st.sidebar.title("Navigasi")
-page = st.sidebar.selectbox("Pilih Halaman", ["Prediksi", "Visualisasi Data", "Tabel Data", "Deskripsi Model", "Tentang"])
+# Evaluation
+mse = mean_squared_error(y_test, y_pred)
+r2 = r2_score(y_test, y_pred)
 
-# Halaman Prediksi
-if page == "Prediksi":
-    st.header("Prediksi Tingkat Bunuh Diri")
-    # Input tahun dari pengguna
-    year = st.number_input('Masukkan Tahun:', min_value=1950, max_value=2024, step=1)
-    age_group = st.selectbox('Pilih Kelompok Usia:', ['All ages', '0-14', '15-24', '25-34', '35-54', '55-74', '75+'])
-    age_num = 0  # Default untuk "All ages", sesuaikan dengan dataset kamu
-    
-    # Prediksi
-    if st.button('Prediksi'):
-        prediction = model.predict([[year, age_num]])[0]
-        st.write(f"Prediksi Tingkat Bunuh Diri per 100,000 penduduk pada tahun {year} untuk kelompok usia {age_group} adalah {prediction:.2f}")
+st.write(f"Mean Squared Error: {mse}")
+st.write(f"R-squared: {r2}")
 
-# Halaman Visualisasi Data
-elif page == "Visualisasi Data":
-    st.header("Visualisasi Data Tingkat Bunuh Diri")
-    plt.figure(figsize=(10, 5))
-    plt.plot(df['YEAR'], df['ESTIMATE'], marker='o')
-    plt.title('Tren Tingkat Bunuh Diri')
-    plt.xlabel('Tahun')
-    plt.ylabel('Tingkat Bunuh Diri per 100,000 penduduk')
-    st.pyplot(plt)
+# User Input
+st.write("Input Data for Prediction:")
+year = st.number_input("Year", min_value=1985, max_value=2021, value=2000)
+sex = st.selectbox("Sex", options=["male", "female"])
+age = st.selectbox("Age", options=["5-14 years", "15-24 years", "25-34 years", "35-54 years", "55-74 years", "75+ years"])
+country = st.selectbox("Country", options=data['country'].unique())
+generation = st.selectbox("Generation", options=data['generation'].unique())
 
-# Halaman Tabel Data
-elif page == "Tabel Data":
-    st.header("Data yang Digunakan")
-    st.table(df)
+# Create a DataFrame from user input
+input_data = pd.DataFrame({
+    'year': [year],
+    'sex': [sex],
+    'age': [age],
+    'country': [country],
+    'generation': [generation]
+})
 
-# Halaman Deskripsi Model
-elif page == "Deskripsi Model":
-    st.header("Deskripsi Model")
-    st.write("""
-    Model yang digunakan adalah regresi linear sederhana untuk memprediksi tingkat bunuh diri berdasarkan tahun dan kelompok usia.
-    Data yang digunakan berasal dari dataset tingkat bunuh diri di Amerika Serikat.
-    """)
+# Make prediction
+prediction = model.predict(input_data)
 
-# Halaman Tentang
-elif page == "Tentang":
-    st.header("Tentang Aplikasi Ini")
-    st.write("""
-    Aplikasi ini dibuat untuk memprediksi tingkat bunuh diri di Amerika Serikat berdasarkan tahun dan kelompok usia.
-    Aplikasi ini menggunakan model regresi linear yang dilatih dengan dataset historis.
-    """)
+st.write(f"Predicted Suicides/100k Pop: {prediction[0]}")
